@@ -1,8 +1,8 @@
 #!/bin/python3
 import curses, time, sys
 
-WIDTH = 80
-HEIGHT = 24
+WIDTH = 79
+HEIGHT = 23
 
 px = WIDTH // 2
 py = HEIGHT // 2
@@ -10,10 +10,8 @@ py = HEIGHT // 2
 def render_screen(scr):
   for row in range(HEIGHT):
     for col in range(WIDTH):
-      try:
-        if row == py and col == px: scr.addch(row, col, '@')
-        else: scr.addch(row, col, ' ')
-      except: pass
+      if row == py and col == px: scr.addch(row, col, '@')
+      else: scr.addch(row, col, ' ')
   scr.move(py, px)
   scr.refresh()
 
@@ -26,8 +24,7 @@ def handle_command(scr):
   elif ch == ord('k'): py -= 1
   elif ch == ord('l'): px += 1
   
-def main(stdscr):
-  scr = curses.initscr()
+def main(scr):
   curses.noecho()
   curses.cbreak()
   scr.keypad(1)
