@@ -208,18 +208,37 @@ def render_all(scr, objects):
   curses.curs_set(1)
   scr.refresh()
 
+def player_move_or_attack(dx, dy, objects, scr):
+  global fov_recompute
+  player = objects[0]
+  x = player.x + dx
+  y = player.y + dy
+  target = None
+  for obj in objects:
+    if obj.x == x and obj.y == y:
+      target = obj
+      break
+  if target is not None:
+    scr.addstr(0,0, 'The ' + target.name + ' laughs at your puny efforts to attack him!')
+    scr.refresh()
+  else:
+    player.move(dx, dy, objects)
+    fov_recompute = True
+
 def handle_command(scr, objects):
   global fov_recompute
   player = objects[0]
   ch = scr.getch()
-  if ch == ord('Q'): sys.exit(0)
-  elif ch == ord('h'): player.move(-1, 0, objects); fov_recompute = True
-  elif ch == ord('j'): player.move(0, 1, objects); fov_recompute = True
-  elif ch == ord('k'): player.move(0, -1, objects); fov_recompute = True
-  elif ch == ord('l'): player.move(1, 0, objects); fov_recompute = True
+  if ch == ord('Q'): return 'exit'
+  if game_state == 'playing':
+    if ch == ord('h'): player_move_or_attack(-1, 0, objects, scr)
+    elif ch == ord('j'): player_move_or_attack(0, 1, objects, scr)
+    elif ch == ord('k'): player_move_or_attack(0, -1, objects, scr)
+    elif ch == ord('l'): player_move_or_attack(1, 0, objects, scr)
+    else: return 'didnt-take-turn'
   
 def main(scr):
-  global fov_recompute
+  global fov_recompute, game_state, player_action
   rows, cols = scr.getmaxyx()
   if (rows < SCREEN_HEIGHT or cols < SCREEN_WIDTH):
     raise RuntimeError('Set your terminal to at least 80x24')
@@ -232,10 +251,19 @@ def main(scr):
   objects = [player]
   make_map(player, objects, scr)
   fov_recompute = True
+  game_state = 'playing'
+  player_action = None
   while True:
     render_all(scr, objects)
-    handle_command(scr, objects)
+    player_action = handle_command(scr, objects)
+    if player_action == 'exit': sys.exit(0)
     for object in objects: object.clear()
+    if game_state == 'playing' and player_action != 'didnt-take-turn':
+      for obj in objects:
+        if obj != player:
+          pass
+          #scr.addstr(0, 0, 'The ' + obj.name + ' takes turn!')
+          #scr.refresh()
 
 try: curses.wrapper(main)
 except RuntimeError as e: print(e)
