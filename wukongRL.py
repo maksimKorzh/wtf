@@ -9,6 +9,7 @@ MAP_HEIGHT = SCREEN_HEIGHT-1
 ROOM_MAX_SIZE = 12
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
+MAX_ROOM_MONSTERS = 3
 
 class Rect:
   def __init__(self, x, y, w, h):
@@ -34,14 +35,16 @@ class Tile:
     self.block_sight = block_sight
 
 class GameObject:
-  def __init__(self, x, y, ch, scr):
+  def __init__(self, x, y, ch, name, scr, blocks=False):
     self.x = x
     self.y = y
     self.ch = ch
+    self.name = name
     self.scr = scr
+    self.blocks = blocks
     
-  def move(self, dx, dy):
-    if not map[self.x + dx][self.y + dy].blocked:
+  def move(self, dx, dy, objects):
+    if not is_blocked(self.x + dx, self.y + dy, objects):
       self.x += dx
       self.y += dy
     
@@ -90,8 +93,6 @@ def make_map(player, objects, scr):
     if not failed:
       create_room(new_room)
       (new_x, new_y) = new_room.center()
-      #room_no = GameObject(new_x, new_y, chr(65+num_rooms), scr)
-      #objects.insert(0, room_no)
       if num_rooms == 0:
         player.x = new_x
         player.y = new_y
@@ -103,8 +104,30 @@ def make_map(player, objects, scr):
         else:
           create_v_tunnel(prev_y, new_y, prev_x)
           create_h_tunnel(prev_x, new_x, new_y)
+      place_objects(new_room, objects, scr)
       rooms.append(new_room)
       num_rooms += 1
+
+def is_blocked(x, y, objects):
+  if map[x][y].blocked: return True
+  for obj in objects:
+    if obj.blocks and obj.x == x and obj.y == y:
+      return True
+  return False
+
+def place_objects(room, objects, scr):
+  num_enemys = randint(0, MAX_ROOM_MONSTERS)
+  for i in range(num_enemys):
+    x = randint(room.x1, room.x2)
+    y = randint(room.y1, room.y2)
+    if not is_blocked(x, y, objects):
+      #chances: 20% enemy A, 40% enemy B, 10% enemy C, 30% enemy D:
+      choice = randint(0, 100)
+      if choice < 20: enemy = GameObject(x, y,  'A', 'enemy A',  scr, blocks=True)
+      elif choice < 20+40: enemy = GameObject(x, y,  'B', 'enemy B',  scr, blocks=True)
+      elif choice < 20+40+10: enemy = GameObject(x, y,  'C', 'enemy C',  scr, blocks=True)
+      else: enemy = GameObject(x, y,  'D', 'enemy D',  scr, blocks=True)
+      objects.append(enemy)
 
 def calculate_fov(player, radius=10):
   visible = set()
@@ -183,13 +206,14 @@ def render_all(scr, objects):
   curses.curs_set(1)
   scr.refresh()
 
-def handle_command(scr, player):
+def handle_command(scr, objects):
+  player = objects[0]
   ch = scr.getch()
   if ch == ord('Q'): sys.exit(0)
-  elif ch == ord('h'): player.move(-1, 0)
-  elif ch == ord('j'): player.move(0, 1)
-  elif ch == ord('k'): player.move(0, -1)
-  elif ch == ord('l'): player.move(1, 0)
+  elif ch == ord('h'): player.move(-1, 0, objects)
+  elif ch == ord('j'): player.move(0, 1, objects)
+  elif ch == ord('k'): player.move(0, -1, objects)
+  elif ch == ord('l'): player.move(1, 0, objects)
   
 def main(scr):
   rows, cols = scr.getmaxyx()
@@ -200,13 +224,12 @@ def main(scr):
   curses.raw()
   scr.keypad(1)
   curses.use_default_colors()
-  player = GameObject(0, 0, '@', scr)
-  monster = GameObject(0, 0, 'M', scr)
+  player = GameObject(0, 0, '@', 'player', scr, blocks=True)
   objects = [player]
   make_map(player, objects, scr)
   while True:
     render_all(scr, objects)
-    handle_command(scr, player)
+    handle_command(scr, objects)
     for object in objects: object.clear()
 
 try: curses.wrapper(main)
