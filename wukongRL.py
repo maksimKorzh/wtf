@@ -1,10 +1,14 @@
 #!/bin/python3
 import curses, time, sys
+from random import randint
 
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 24
 MAP_WIDTH = SCREEN_WIDTH
 MAP_HEIGHT = SCREEN_HEIGHT-1
+ROOM_MAX_SIZE = 12
+ROOM_MIN_SIZE = 6
+MAX_ROOMS = 30
 
 class Rect:
   def __init__(self, x, y, w, h):
@@ -12,6 +16,15 @@ class Rect:
     self.y1 = y
     self.x2 = x + w
     self.y2 = y + h
+
+  def center(self):
+    center_x = (self.x1 + self.x2) // 2
+    center_y = (self.y1 + self.y2) // 2
+    return (center_x, center_y)
+    
+  def intersect(self, other):
+    return (self.x1 <= other.x2 and self.x2 >= other.x1 and
+            self.y1 <= other.y2 and self.y2 >= other.y1)
 
 class Tile:
   def __init__(self, blocked, block_sight=None):
@@ -56,14 +69,38 @@ def create_v_tunnel(y1, y2, x):
     map[x][y].blocked = False
     map[x][y].block_sight = False
 
-def make_map():
+def make_map(player):
   global map
   map = [[Tile(True) for y in range(MAP_HEIGHT)] for x in range(MAP_WIDTH)]
-  room1 = Rect(10, 15, 20, 6)
-  room2 = Rect(40, 15, 20, 6)
-  create_room(room1)
-  create_room(room2)
-  create_h_tunnel(30, 40, 18)
+  rooms = []
+  num_rooms = 0
+  for r in range(MAX_ROOMS):
+    w = randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
+    h = randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
+    x = randint(0, MAP_WIDTH-w-1)
+    y = randint(0, MAP_HEIGHT-h-1)
+    new_room = Rect(x, y, w, h)
+    failed = False
+    for other_room in rooms:
+      if new_room.intersect(other_room):
+        failed = True
+        break
+    if not failed:
+      create_room(new_room)
+      (new_x, new_y) = new_room.center()
+      if num_rooms == 0:
+        player.x = new_x
+        player.y = new_y
+      else:
+        (prev_x, prev_y) = rooms[num_rooms-1].center()
+        if randint(0, 1):
+          create_h_tunnel(prev_x, new_x, prev_y)
+          create_v_tunnel(prev_y, new_y, new_x)
+        else:
+          create_v_tunnel(prev_y, new_y, prev_x)
+          create_h_tunnel(prev_x, new_x, new_y)
+      rooms.append(new_room)
+      num_rooms += 1
   
 def render_all(scr, objects):
   for y in range(MAP_HEIGHT):
@@ -95,10 +132,10 @@ def main(scr):
   curses.raw()
   scr.keypad(1)
   curses.use_default_colors()
-  player = GameObject(12, 18, '@', scr)
-  monster = GameObject(12, 16, 'M', scr)
-  objects = [player, monster]
-  make_map()
+  player = GameObject(0, 0, '@', scr)
+  monster = GameObject(0, 0, 'M', scr)
+  objects = [player]
+  make_map(player)
   while True:
     render_all(scr, objects)
     handle_command(scr, player)
