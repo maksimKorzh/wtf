@@ -69,7 +69,7 @@ def create_v_tunnel(y1, y2, x):
     map[x][y].blocked = False
     map[x][y].block_sight = False
 
-def make_map(player):
+def make_map(player, objects, scr):
   global map
   map = [[Tile(True) for y in range(MAP_HEIGHT)] for x in range(MAP_WIDTH)]
   rooms = []
@@ -88,6 +88,8 @@ def make_map(player):
     if not failed:
       create_room(new_room)
       (new_x, new_y) = new_room.center()
+      #room_no = GameObject(new_x, new_y, chr(65+num_rooms), scr)
+      #objects.insert(0, room_no)
       if num_rooms == 0:
         player.x = new_x
         player.y = new_y
@@ -135,7 +137,7 @@ def main(scr):
   player = GameObject(0, 0, '@', scr)
   monster = GameObject(0, 0, 'M', scr)
   objects = [player]
-  make_map(player)
+  make_map(player, objects, scr)
   while True:
     render_all(scr, objects)
     handle_command(scr, player)
