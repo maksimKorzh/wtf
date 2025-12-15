@@ -44,13 +44,26 @@ def create_room(room):
       map[x][y].blocked = False
       map[x][y].block_sight = False
 
+def create_h_tunnel(x1, x2, y):
+  global map
+  for x in range(min(x1, x2), max(x1, x2) + 1):
+    map[x][y].blocked = False
+    map[x][y].block_sight = False
+
+def create_v_tunnel(y1, y2, x):
+  global map
+  for y in range(min(y1, y2), max(y1, y2) + 1):
+    map[x][y].blocked = False
+    map[x][y].block_sight = False
+
 def make_map():
   global map
   map = [[Tile(True) for y in range(MAP_HEIGHT)] for x in range(MAP_WIDTH)]
-  room1 = Rect(10, 15, 20, 5)
-  room2 = Rect(40, 15, 20, 5)
+  room1 = Rect(10, 15, 20, 6)
+  room2 = Rect(40, 15, 20, 6)
   create_room(room1)
   create_room(room2)
+  create_h_tunnel(30, 40, 18)
   
 def render_all(scr, objects):
   for y in range(MAP_HEIGHT):
