@@ -87,12 +87,12 @@ class Fighter:
         function = self.death_function
         if function is not None: function(self.owner)
           
-  def attack(self, target):
+  def attack(self, target, scr):
     damage = self.power - target.fighter.defense
     if damage > 0:
-      print(self.owner.name.capitalize() + ' attacks ' + target.name +  ' for ' + str(damage) + ' hit points.')
+      print_message(self.owner.name.capitalize() + ' attacks ' + target.name +  ' for ' + str(damage) + ' hit points.', scr)
       target.fighter.take_damage(damage)
-    else: print(self.owner.name.capitalize() + ' attacks ' + target.name +  ' but it has no effect!')
+    else: print_message(self.owner.name.capitalize() + ' attacks ' + target.name +  ' but it has no effect!', scr)
 
 class BasicEnemy:
   def take_turn(self, objects, scr):
@@ -100,7 +100,7 @@ class BasicEnemy:
     enemy = self.owner
     if (enemy.x, enemy.y) in visible_tiles:
       if enemy.distance_to(player) >= 2: enemy.move_towards(player.x, player.y, objects)
-      elif player.fighter.hp > 0: print_message('The attack of the ' + enemy.name + ' bounces off your shiny metal armor!', scr)
+      elif player.fighter.hp > 0: enemy.fighter.attack(player, scr)
 
 def create_room(room):
   global map
@@ -277,8 +277,7 @@ def player_move_or_attack(dx, dy, objects, scr):
     if obj.x == x and obj.y == y:
       target = obj
       break
-  if target is not None:
-    print_message('The ' + target.name + ' laughs at your puny efforts to attack him!', scr)
+  if target is not None: player.fighter.attack(target, scr)
   else:
     player.move(dx, dy, objects)
     fov_recompute = True
