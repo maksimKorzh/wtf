@@ -46,7 +46,8 @@ class GameObject:
       self.y += dy
     
   def draw(self):
-    self.scr.addch(self.y, self.x, self.ch)
+    if (self.x, self.y) in visible_tiles:
+      self.scr.addch(self.y, self.x, self.ch)
 
   def clear(self):
     self.scr.addch(self.y, self.x, ' ')
