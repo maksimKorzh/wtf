@@ -142,11 +142,17 @@ def cast_qi_attack(player, objects, scr):
   print_message('Who to attack? (enemy char, e.g. "A" or "B")', scr)
   ch = -1
   while ch == -1: ch = scr.getch()
+  hit = False
   for obj in objects:
     if (obj.x, obj.y) in visible_tiles:
       if obj.fighter and obj.ch == chr(ch):
         player.fighter.attack(obj, objects, scr)
+        print_message('You used QI to attack ' + obj.name.capitalize(), scr)
+        hit = True
         break
+  if not hit:
+    print_message('There is no enemy ' + chr(ch) + '!', scr)
+    return 'cancelled'
 
 def player_death(player, objects, scr):
   global game_state
@@ -320,8 +326,7 @@ def is_visible_tile(x, y):
   else: return True
 
 def render_all(scr, objects):
-  global fov_recompute
-  global visible_tiles
+  global fov_recompute, visible_tiles, all_enemies
   player = objects[0]
   if fov_recompute:
     fov_recompute = False
@@ -342,9 +347,10 @@ def render_all(scr, objects):
   player.draw()
   scr.move(23, 0)
   scr.clrtoeol()
-  scr.addstr(23,0, 'Wukong (HP:' + str(player.fighter.hp) + '/' + str(player.fighter.max_hp) + ' '
-                   'Power:' + str(player.fighter.power) + ' '
-                   'Defense:' + str(player.fighter.defense) + ')')
+  scr.addstr(23,0, 'Wukong (HP:' + str(player.fighter.hp) + '/' + str(player.fighter.max_hp) + ' ' +
+                   'Power:' + str(player.fighter.power) + ' ' +
+                   'Defense:' + str(player.fighter.defense) + ')' + ' ' +
+                   'Enemies:' + str(all_enemies))
   curses.curs_set(0)
   scr.move(player.y, player.x)
   curses.curs_set(1)
@@ -416,7 +422,7 @@ def print_message(msg, scr):
   scr.refresh()
   
 def main(scr):
-  global fov_recompute, game_state, player_action
+  global fov_recompute, game_state, player_action, all_enemies
   rows, cols = scr.getmaxyx()
   if (rows < SCREEN_HEIGHT or cols < SCREEN_WIDTH):
     raise RuntimeError('Set your terminal to at least 80x24')
@@ -436,7 +442,16 @@ def main(scr):
   game_state = 'playing'
   player_action = None
   while True:
+    all_enemies = 0
+    for obj in objects:
+      if not obj.fighter or obj.name == 'Wukong': continue
+      else: all_enemies += 1
     render_all(scr, objects)
+    if all_enemies == 0:
+      print_message('You killed all enemies!', scr)
+      ch = -1
+      while ch == -1: ch = scr.getch()
+      break
     player_action = handle_command(scr, objects, inventory)
     if player_action == 'exit': sys.exit(0)
     for object in objects: object.clear()
