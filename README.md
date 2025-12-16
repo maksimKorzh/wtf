@@ -1,2 +1,2 @@
-# wukongRL
-Minimalist linux terminal based rogue-like game about monkey king Sun Wukong adventures
+# WTF - Wukong Tactical Fight
+Minimalist linux terminal based tactical game featuring Sun Wukong, the monkey king
