@@ -181,16 +181,15 @@ def player_death(player, objects, scr):
 def enemy_death(enemy, objects, scr):
   print_message(enemy.name.capitalize() + ' is dead!', scr)
   player = objects[0]
-  if player.fighter.max_hp + 5 < 99: player.fighter.max_hp += 5
+  if player.fighter.max_hp + 5 < ERLAN_SHEN_HP: player.fighter.max_hp += 5
   amount = 0
   if enemy.ch == 'H': amount = 1
   elif enemy.ch == 'W': amount = 3
   elif enemy.ch == 'B': amount = 5
   elif enemy.ch == 'S': amount = 7
   elif enemy.ch == 'E': amount = 9
-  
-  player.fighter.defense += amount
-  player.fighter.power += amount
+  if (ERLAN_SHEN_DEFENSE - player.fighter.defense + amount) > 5: player.fighter.defense += amount
+  if (ERLAN_SHEN_POWER - player.fighter.power + amount) > 5: player.fighter.power += amount
   enemy.ch = '%'
   enemy.blocks = False
   enemy.fighter = None
@@ -474,9 +473,10 @@ def main(scr):
   attack_item = GameObject(0,0, '!', 'QI attack spell', scr, item=qi_attack_component)
   qi_defense_component = Item(use_function=cast_qi_heal)
   defense_item = GameObject(0,0, '!', 'QI cultivation spell', scr, item=qi_defense_component)
-  inventory = [defense_item, defense_item, defense_item, attack_item, attack_item, attack_item]
+  inventory = [defense_item, defense_item, defense_item, defense_item, defense_item, attack_item, attack_item, attack_item]
   make_map(player, objects, scr)
-  fov_recompute = True; player_action = None
+  fov_recompute = True
+  player_action = None
   game_state = 'playing'
   while True:
     all_enemies = 0
