@@ -88,11 +88,12 @@ class Fighter:
         if function is not None: function(self.owner)
           
   def attack(self, target, scr):
+    enemy_stats = self.owner.name.capitalize() + '(HP:' + str(self.hp) + ' Power:' + str(self.power) + ' Defence:' + str(self.defense) + ')'
     damage = self.power - target.fighter.defense
     if damage > 0:
-      print_message(self.owner.name.capitalize() + ' attacks ' + target.name +  ' for ' + str(damage) + ' hit points.', scr)
+      if self.owner.name != 'Wukong': print_message(enemy_stats + ' attacks ' + target.name +  ' for ' + str(damage) + ' hit points.', scr)
       target.fighter.take_damage(damage)
-    else: print_message(self.owner.name.capitalize() + ' attacks ' + target.name +  ' but it has no effect!', scr)
+    else: print_message(enemy_stats + ' attacks ' + target.name +  ' but it has no effect!', scr)
 
 class BasicEnemy:
   def take_turn(self, objects, scr):
@@ -262,6 +263,11 @@ def render_all(scr, objects):
           else: scr.addch(y, x, '.')
           map[x][y].explored = True
   for object in objects: object.draw()
+  scr.move(23, 0)
+  scr.clrtoeol()
+  scr.addstr(23,0, 'Wukong (HP:' + str(player.fighter.hp) + ' '
+                   'Power:' + str(player.fighter.power) + ' '
+                   'Defense:' + str(player.fighter.defense) + ')')
   curses.curs_set(0)
   scr.move(player.y, player.x)
   curses.curs_set(1)
@@ -306,7 +312,7 @@ def print_message(msg, scr):
     print_message(' '.join(msg.split(' ')[15:]), scr)
   else: scr.addstr(22,0, msg)
   scr.refresh()
-
+  
 def main(scr):
   global fov_recompute, game_state, player_action
   rows, cols = scr.getmaxyx()
@@ -318,7 +324,7 @@ def main(scr):
   scr.keypad(1)
   curses.use_default_colors()
   fighter_component = Fighter(hp=30, defense=2, power=5)
-  player = GameObject(0, 0, '@', 'player', scr, blocks=True, fighter=fighter_component)
+  player = GameObject(0, 0, '@', 'Wukong', scr, blocks=True, fighter=fighter_component)
   objects = [player]
   make_map(player, objects, scr)
   fov_recompute = True
