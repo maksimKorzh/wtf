@@ -12,6 +12,24 @@ MAX_ROOMS = 30
 MAX_ROOM_MONSTERS = 3
 MAX_ROOM_ITEMS = 2
 HEAL_AMOUNT = 5
+WUKONG_START_HP = 10
+WUKONG_START_DEFENSE = 0
+WUKONG_START_POWER = 5
+HUNGRY_GHOST_HP = 5
+HUNGRY_GHOST_DEFENSE = 0
+HUNGRY_GHOST_POWER = 1
+WHITE_BONE_DEMON_HP = 7
+WHITE_BONE_DEMON_DEFENSE = 2
+WHITE_BONE_DEMON_POWER = 3
+BULL_DEMON_HP = 15
+BULL_DEMON_DEFENSE = 5
+BULL_DEMON_POWER = 5
+SPIDER_QUEEN_HP = 30
+SPIDER_QUEEN_DEFENSE = 7
+SPIDER_QUEEN_POWER = 7
+ERLAN_SHEN_HP = 50
+ERLAN_SHEN_DEFENSE = 10
+ERLAN_SHEN_POWER = 20
 
 class Rect:
   def __init__(self, x, y, w, h):
@@ -135,7 +153,7 @@ def cast_heal(player, objects, scr):
   if player.fighter.hp == player.fighter.max_hp:
     print_message('You are already at full health.', scr)
     return 'cancelled'
-  print_message('Your wounds start to feel better!', scr)
+  print_message('You feel your body filling with QI!', scr)
   player.fighter.heal(HEAL_AMOUNT)
 
 def cast_qi_attack(player, objects, scr):
@@ -162,6 +180,10 @@ def player_death(player, objects, scr):
 
 def enemy_death(enemy, objects, scr):
   print_message(enemy.name.capitalize() + ' is dead!', scr)
+  player = objects[0]
+  if player.fighter.max_hp + 5 < 99: player.fighter.max_hp += 5
+  player.fighter.defense += 3
+  player.fighter.power += 2
   enemy.ch = '%'
   enemy.blocks = False
   enemy.fighter = None
@@ -235,24 +257,27 @@ def place_objects(room, objects, scr):
     x = randint(room.x1+1, room.x2-1)
     y = randint(room.y1+1, room.y2-1)
     if not is_blocked(x, y, objects):
-      #chances: 20% enemy A, 40% enemy B, 10% enemy C, 30% enemy D:
       choice = randint(0, 100)
-      if choice < 20:
-        fighter_component = Fighter(hp=10, defense=0, power=3, death_function=enemy_death)
+      if choice < 10:
+        fighter_component = Fighter(hp=ERLAN_SHEN_HP, defense=ERLAN_SHEN_DEFENSE, power=ERLAN_SHEN_POWER, death_function=enemy_death)
         ai_component = BasicEnemy()
-        enemy = GameObject(x, y,  'A', 'enemy A',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
-      elif choice < 20+40:
-        fighter_component = Fighter(hp=5, defense=0, power=1, death_function=enemy_death)
+        enemy = GameObject(x, y,  'E', 'erlan shen',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
+      elif choice < 20:
+        fighter_component = Fighter(hp=SPIDER_QUEEN_HP, defense=SPIDER_QUEEN_DEFENSE, power=SPIDER_QUEEN_POWER, death_function=enemy_death)
         ai_component = BasicEnemy()
-        enemy = GameObject(x, y,  'B', 'enemy B',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
-      elif choice < 20+40+10:
-        fighter_component = Fighter(hp=16, defense=2, power=5, death_function=enemy_death)
+        enemy = GameObject(x, y,  'S', 'spider queen',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
+      elif choice < 40:
+        fighter_component = Fighter(hp=BULL_DEMON_HP, defense=BULL_DEMON_DEFENSE, power=BULL_DEMON_POWER, death_function=enemy_death)
         ai_component = BasicEnemy()
-        enemy = GameObject(x, y,  'C', 'enemy C',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
+        enemy = GameObject(x, y,  'B', 'bull demon',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
+      elif choice < 60:
+        fighter_component = Fighter(hp=WHITE_BONE_DEMON_HP, defense=WHITE_BONE_DEMON_DEFENSE, power=WHITE_BONE_DEMON_POWER, death_function=enemy_death)
+        ai_component = BasicEnemy()
+        enemy = GameObject(x, y,  'W', 'white bone demon',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
       else:
-        fighter_component = Fighter(hp=6, defense=0, power=4, death_function=enemy_death)
+        fighter_component = Fighter(hp=HUNGRY_GHOST_HP, defense=HUNGRY_GHOST_DEFENSE, power=HUNGRY_GHOST_POWER, death_function=enemy_death)
         ai_component = BasicEnemy()
-        enemy = GameObject(x, y,  'D', 'enemy D',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
+        enemy = GameObject(x, y,  'H', 'hungry ghost',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
       objects.append(enemy)
   
   num_items = randint(0, MAX_ROOM_ITEMS)
@@ -261,7 +286,7 @@ def place_objects(room, objects, scr):
     y = randint(room.y1+1, room.y2-1)
     if not is_blocked(x, y, objects):
       item_component = Item(use_function=cast_heal)
-      item = GameObject(x, y, '!', 'healing potion', scr, item=item_component)
+      item = GameObject(x, y, '!', 'QI cultivation spell', scr, item=item_component)
       objects.append(item)
       item.send_to_back(objects)
 
@@ -269,7 +294,7 @@ def place_objects(room, objects, scr):
     y1 = randint(room.y1+1, room.y2-1)
     if not is_blocked(x1, y1, objects) and x1 != x and y1 != y:
       item_component = Item(use_function=cast_qi_attack)
-      item = GameObject(x1, y1, '~', 'qi attack spell', scr, item=item_component)
+      item = GameObject(x1, y1, '~', 'QI attack spell', scr, item=item_component)
       objects.append(item)
 def calculate_fov(player, radius=10):
   visible = set()
@@ -350,7 +375,9 @@ def render_all(scr, objects):
   scr.addstr(23,0, 'Wukong (HP:' + str(player.fighter.hp) + '/' + str(player.fighter.max_hp) + ' ' +
                    'Power:' + str(player.fighter.power) + ' ' +
                    'Defense:' + str(player.fighter.defense) + ')' + ' ' +
-                   'Enemies:' + str(all_enemies))
+                   'Enemies:' + str(all_enemies) + ' ' +
+                   '| MOVE: [hjklyubn]' + ' ' +
+                   'ITEMS: [i,.]')
   curses.curs_set(0)
   scr.move(player.y, player.x)
   curses.curs_set(1)
@@ -431,11 +458,11 @@ def main(scr):
   curses.raw()
   scr.keypad(1)
   curses.use_default_colors()
-  fighter_component = Fighter(hp=30, defense=2, power=5, death_function=player_death)
+  fighter_component = Fighter(hp=WUKONG_START_HP, defense=WUKONG_START_DEFENSE, power=WUKONG_START_POWER, death_function=player_death)
   player = GameObject(0, 0, '@', 'Wukong', scr, blocks=True, fighter=fighter_component)
   objects = [player]
   item_component = Item(use_function=cast_qi_attack)
-  item = GameObject(0,0, '!', 'qi attack spell', scr, item=item_component)
+  item = GameObject(0,0, '!', 'QI attack spell', scr, item=item_component)
   inventory = [item, item, item]
   make_map(player, objects, scr)
   fov_recompute = True
@@ -447,8 +474,8 @@ def main(scr):
       if not obj.fighter or obj.name == 'Wukong': continue
       else: all_enemies += 1
     render_all(scr, objects)
-    if all_enemies == 0:
-      print_message('You killed all enemies!', scr)
+    if all_enemies == 0 or game_state == 'dead':
+      if game_state != 'dead': print_message('You killed all enemies!', scr)
       ch = -1
       while ch == -1: ch = scr.getch()
       break
