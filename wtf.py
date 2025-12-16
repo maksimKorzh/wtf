@@ -375,9 +375,8 @@ def render_all(scr, objects):
   scr.addstr(23,0, 'Wukong (HP:' + str(player.fighter.hp) + '/' + str(player.fighter.max_hp) + ' ' +
                    'Power:' + str(player.fighter.power) + ' ' +
                    'Defense:' + str(player.fighter.defense) + ')' + ' ' +
-                   'Enemies:' + str(all_enemies) + ' ' +
-                   '| MOVE: [hjklyubn]' + ' ' +
-                   'ITEMS: [i,.]')
+                   'ENEMIES:' + str(all_enemies) + ' ' +
+                   '| MOVE: [hjklyubn] ITEMS: [i,.]')
   curses.curs_set(0)
   scr.move(player.y, player.x)
   curses.curs_set(1)
@@ -444,7 +443,7 @@ def print_message(msg, scr):
     scr.addstr(22,0, ' '.join(msg.split(' ')[0:10]) + '--more--')
     ch = -1
     while ch == -1: ch = scr.getch()
-    print_message(' '.join(msg.split(' ')[15:]), scr)
+    print_message(' '.join(msg.split(' ')[10:]), scr)
   else: scr.addstr(22,0, msg)
   scr.refresh()
   
