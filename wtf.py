@@ -126,17 +126,27 @@ class Item:
       objects.remove(self.owner)
       print_message('You picked up a ' + self.owner.name + '!', scr)
 
-  def use(self, player, inventory, scr):
+  def use(self, player, objects, inventory, scr):
     if self.use_function is None: print_message('The ' + self.owner.name + ' cannot be used.')
     else:
-      if self.use_function(player, scr) != 'cancelled': inventory.remove(self.owner)
+      if self.use_function(player, objects, scr) != 'cancelled': inventory.remove(self.owner)
 
-def cast_heal(player, scr):
+def cast_heal(player, objects, scr):
   if player.fighter.hp == player.fighter.max_hp:
     print_message('You are already at full health.', scr)
     return 'cancelled'
   print_message('Your wounds start to feel better!', scr)
   player.fighter.heal(HEAL_AMOUNT)
+
+def cast_qi_attack(player, objects, scr):
+  print_message('Who to attack? (enemy char, e.g. "A" or "B")', scr)
+  ch = -1
+  while ch == -1: ch = scr.getch()
+  for obj in objects:
+    if (obj.x, obj.y) in visible_tiles:
+      if obj.fighter and obj.ch == chr(ch):
+        player.fighter.attack(obj, objects, scr)
+        break
 
 def player_death(player, objects, scr):
   global game_state
@@ -368,12 +378,11 @@ def handle_command(scr, objects, inventory):
       if ch == ord('.'):
         if len(inventory) == 0: print_message('You have no items to use!', scr)
         else:
-          print_message('What to use?', scr)
+          print_message('What to use? (inventory item, e.q. "a" or "b")', scr)
           ch = -1
           while ch == -1: ch = scr.getch()
-          print_message('you chose ' + str(ch), scr)
           for _, obj in enumerate(inventory):
-            if ch - ord('a') == _: obj.item.use(player, inventory, scr)
+            if ch - ord('a') == _: obj.item.use(player, objects, inventory, scr)
 
       if ch == ord(','):
         for obj in objects:
@@ -413,7 +422,12 @@ def main(scr):
   fighter_component = Fighter(hp=30, defense=2, power=5, death_function=player_death)
   player = GameObject(0, 0, '@', 'Wukong', scr, blocks=True, fighter=fighter_component)
   objects = [player]
-  inventory = []
+  
+  item_component = Item(use_function=cast_qi_attack)
+  item = GameObject(0,0, '!', 'QI attack', scr, item=item_component)
+  inventory = [item, item, item]
+  
+  
   make_map(player, objects, scr)
   fov_recompute = True
   game_state = 'playing'
