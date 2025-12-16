@@ -80,19 +80,19 @@ class Fighter:
     self.power = power
     self.death_function = death_function
 
-  def take_damage(self, damage):
+  def take_damage(self, damage, scr):
     if damage > 0:
       self.hp -= damage
       if self.hp <= 0:
         function = self.death_function
-        if function is not None: function(self.owner)
+        if function is not None: function(self.owner, scr)
           
   def attack(self, target, scr):
-    enemy_stats = self.owner.name.capitalize() + '(HP:' + str(self.hp) + ' Power:' + str(self.power) + ' Defence:' + str(self.defense) + ')'
+    enemy_stats = self.owner.name.capitalize() + '(HP:' + str(self.hp) + '/' + str(self.max_hp) + ' Power:' + str(self.power) + ' Defence:' + str(self.defense) + ')'
     damage = self.power - target.fighter.defense
     if damage > 0:
       if self.owner.name != 'Wukong': print_message(enemy_stats + ' attacks ' + target.name +  ' for ' + str(damage) + ' hit points.', scr)
-      target.fighter.take_damage(damage)
+      target.fighter.take_damage(damage, scr)
     else: print_message(enemy_stats + ' attacks ' + target.name +  ' but it has no effect!', scr)
 
 class BasicEnemy:
@@ -102,6 +102,20 @@ class BasicEnemy:
     if (enemy.x, enemy.y) in visible_tiles:
       if enemy.distance_to(player) >= 2: enemy.move_towards(player.x, player.y, objects)
       elif player.fighter.hp > 0: enemy.fighter.attack(player, scr)
+
+def player_death(player, scr):
+  global game_state
+  print_message('You died!', scr)
+  game_state = 'dead'
+  player.ch = '%'
+
+def enemy_death(enemy, scr):
+  print_message(enemy.name.capitalize() + ' is dead!', scr)
+  enemy.ch = '%'
+  enemy.blocks = False
+  enemy.fighter = None
+  enemy.ai = None
+  enemy.name = 'remains of ' + enemy.name
 
 def create_room(room):
   global map
@@ -172,19 +186,19 @@ def place_objects(room, objects, scr):
       #chances: 20% enemy A, 40% enemy B, 10% enemy C, 30% enemy D:
       choice = randint(0, 100)
       if choice < 20:
-        fighter_component = Fighter(hp=10, defense=0, power=3)
+        fighter_component = Fighter(hp=10, defense=0, power=3, death_function=enemy_death)
         ai_component = BasicEnemy()
         enemy = GameObject(x, y,  'A', 'enemy A',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
       elif choice < 20+40:
-        fighter_component = Fighter(hp=5, defense=0, power=1)
+        fighter_component = Fighter(hp=5, defense=0, power=1, death_function=enemy_death)
         ai_component = BasicEnemy()
         enemy = GameObject(x, y,  'B', 'enemy B',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
       elif choice < 20+40+10:
-        fighter_component = Fighter(hp=16, defense=2, power=5)
+        fighter_component = Fighter(hp=16, defense=2, power=5, death_function=enemy_death)
         ai_component = BasicEnemy()
         enemy = GameObject(x, y,  'C', 'enemy C',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
       else:
-        fighter_component = Fighter(hp=6, defense=0, power=4)
+        fighter_component = Fighter(hp=6, defense=0, power=4, death_function=enemy_death)
         ai_component = BasicEnemy()
         enemy = GameObject(x, y,  'D', 'enemy D',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
       objects.append(enemy)
@@ -265,7 +279,7 @@ def render_all(scr, objects):
   for object in objects: object.draw()
   scr.move(23, 0)
   scr.clrtoeol()
-  scr.addstr(23,0, 'Wukong (HP:' + str(player.fighter.hp) + ' '
+  scr.addstr(23,0, 'Wukong (HP:' + str(player.fighter.hp) + '/' + str(player.fighter.max_hp) + ' '
                    'Power:' + str(player.fighter.power) + ' '
                    'Defense:' + str(player.fighter.defense) + ')')
   curses.curs_set(0)
@@ -280,7 +294,7 @@ def player_move_or_attack(dx, dy, objects, scr):
   y = player.y + dy
   target = None
   for obj in objects:
-    if obj.x == x and obj.y == y:
+    if obj.fighter and obj.x == x and obj.y == y:
       target = obj
       break
   if target is not None: player.fighter.attack(target, scr)
@@ -323,7 +337,7 @@ def main(scr):
   curses.raw()
   scr.keypad(1)
   curses.use_default_colors()
-  fighter_component = Fighter(hp=30, defense=2, power=5)
+  fighter_component = Fighter(hp=30, defense=2, power=5, death_function=player_death)
   player = GameObject(0, 0, '@', 'Wukong', scr, blocks=True, fighter=fighter_component)
   objects = [player]
   make_map(player, objects, scr)
