@@ -10,6 +10,8 @@ ROOM_MAX_SIZE = 12
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
 MAX_ROOM_MONSTERS = 3
+MAX_ROOM_ITEMS = 2
+HEAL_AMOUNT = 5
 
 class Rect:
   def __init__(self, x, y, w, h):
@@ -35,7 +37,7 @@ class Tile:
     self.block_sight = block_sight
 
 class GameObject:
-  def __init__(self, x, y, ch, name, scr, blocks=False, fighter=None, ai=None):
+  def __init__(self, x, y, ch, name, scr, blocks=False, fighter=None, ai=None, item=None):
     self.x = x
     self.y = y
     self.ch = ch
@@ -46,6 +48,8 @@ class GameObject:
     if self.fighter: self.fighter.owner = self
     self.ai = ai
     if self.ai: self.ai.owner = self
+    self.item = item
+    if self.item: self.item.owner = self
     
   def move(self, dx, dy, objects):
     if not is_blocked(self.x + dx, self.y + dy, objects):
@@ -99,6 +103,10 @@ class Fighter:
       target.fighter.take_damage(damage, objects, scr)
     else: print_message(enemy_stats + ' attacks ' + target.name +  ' but it has no effect!', scr)
 
+  def heal(self, amount):
+    self.hp += amount
+    if self.hp > self.max_hp: self.hp = self.max_hp
+
 class BasicEnemy:
   def take_turn(self, objects, scr):
     player = objects[0]
@@ -106,6 +114,29 @@ class BasicEnemy:
     if (enemy.x, enemy.y) in visible_tiles:
       if enemy.distance_to(player) >= 2: enemy.move_towards(player.x, player.y, objects)
       elif player.fighter.hp > 0: enemy.fighter.attack(player, objects, scr)
+
+class Item:
+  def __init__(self, use_function=None):
+    self.use_function = use_function
+  
+  def pick_up(self, objects, inventory, scr):
+    if len(inventory) >= 26: print_message('Your inventory is full, cannot pick up ' + self.owner.name + '.', scr)
+    else:
+      inventory.append(self.owner)
+      objects.remove(self.owner)
+      print_message('You picked up a ' + self.owner.name + '!', scr)
+
+  def use(self, player, inventory, scr):
+    if self.use_function is None: print_message('The ' + self.owner.name + ' cannot be used.')
+    else:
+      if self.use_function(player, scr) != 'cancelled': inventory.remove(self.owner)
+
+def cast_heal(player, scr):
+  if player.fighter.hp == player.fighter.max_hp:
+    print_message('You are already at full health.', scr)
+    return 'cancelled'
+  print_message('Your wounds start to feel better!', scr)
+  player.fighter.heal(HEAL_AMOUNT)
 
 def player_death(player, objects, scr):
   global game_state
@@ -183,10 +214,10 @@ def is_blocked(x, y, objects):
   return False
 
 def place_objects(room, objects, scr):
-  num_enemys = randint(0, MAX_ROOM_MONSTERS)
-  for i in range(num_enemys):
-    x = randint(room.x1, room.x2)
-    y = randint(room.y1, room.y2)
+  num_enemies = randint(0, MAX_ROOM_MONSTERS)
+  for i in range(num_enemies):
+    x = randint(room.x1+1, room.x2-1)
+    y = randint(room.y1+1, room.y2-1)
     if not is_blocked(x, y, objects):
       #chances: 20% enemy A, 40% enemy B, 10% enemy C, 30% enemy D:
       choice = randint(0, 100)
@@ -207,6 +238,16 @@ def place_objects(room, objects, scr):
         ai_component = BasicEnemy()
         enemy = GameObject(x, y,  'D', 'enemy D',  scr, blocks=True, fighter=fighter_component, ai=ai_component)
       objects.append(enemy)
+  
+  num_items = randint(0, MAX_ROOM_ITEMS)
+  for i in range(num_items):
+    x = randint(room.x1+1, room.x2-1)
+    y = randint(room.y1+1, room.y2-1)
+    if not is_blocked(x, y, objects):
+      item_component = Item(use_function=cast_heal)
+      item = GameObject(x, y, '!', 'healing potion', scr, item=item_component)
+      objects.append(item)
+      item.send_to_back(objects)
 
 def calculate_fov(player, radius=10):
   visible = set()
@@ -309,7 +350,7 @@ def player_move_or_attack(dx, dy, objects, scr):
     fov_recompute = True
     print_message('', scr)
 
-def handle_command(scr, objects):
+def handle_command(scr, objects, inventory):
   global fov_recompute
   player = objects[0]
   ch = scr.getch()
@@ -323,7 +364,29 @@ def handle_command(scr, objects):
     elif ch == ord('u'): player_move_or_attack(1, -1, objects, scr)
     elif ch == ord('b'): player_move_or_attack(-1, 1, objects, scr)
     elif ch == ord('n'): player_move_or_attack(1, 1, objects, scr)
-    else: return 'didnt-take-turn'
+    else:
+      if ch == ord('.'):
+        if len(inventory) == 0: print_message('You have no items to use!', scr)
+        else:
+          print_message('What to use?', scr)
+          ch = -1
+          while ch == -1: ch = scr.getch()
+          print_message('you chose ' + str(ch), scr)
+          for _, obj in enumerate(inventory):
+            if ch - ord('a') == _: obj.item.use(player, inventory, scr)
+
+      if ch == ord(','):
+        for obj in objects:
+          if obj.x == player.x and obj.y == player.y and obj.item:
+            obj.item.pick_up(objects, inventory, scr)
+            break;
+      if ch == ord('i'):
+        if len(inventory) == 0: print_message('Inventory is empty', scr)
+        else:
+          items = ''
+          for _, item in enumerate(inventory): items += '(' + chr(_ + ord('a')) + ') ' + item.name + ' '
+          print_message(items, scr)
+      return 'didnt-take-turn'
 
 def print_message(msg, scr):
   curses.curs_set(0)
@@ -350,13 +413,14 @@ def main(scr):
   fighter_component = Fighter(hp=30, defense=2, power=5, death_function=player_death)
   player = GameObject(0, 0, '@', 'Wukong', scr, blocks=True, fighter=fighter_component)
   objects = [player]
+  inventory = []
   make_map(player, objects, scr)
   fov_recompute = True
   game_state = 'playing'
   player_action = None
   while True:
     render_all(scr, objects)
-    player_action = handle_command(scr, objects)
+    player_action = handle_command(scr, objects, inventory)
     if player_action == 'exit': sys.exit(0)
     for object in objects: object.clear()
     if game_state == 'playing' and player_action != 'didnt-take-turn':
